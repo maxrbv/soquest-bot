@@ -16,3 +16,5 @@ EDIT_SIGNATURE_FAIL_MESSAGE = '❌Пользователь не найден в 
 GET_DATA_SUCCESS_MESSAGE = 'Формируем документ...'
 GET_DATA_FAIL_MESSAGE = 'Установите адрес кошелька и подпись'
 GET_DATA_FAIL_FILE_MESSAGE = '❌Не удалось загрузить файл'
+
+GET_DAILY_FAIL_MESSAGE = 'Установите адрес кошелька и подпись'

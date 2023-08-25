@@ -3,7 +3,7 @@ from aiogram.types import ChatType, CallbackQuery, InputFile
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 
-from tgbot.messages.messages import GET_DATA_FAIL_MESSAGE, GET_DATA_SUCCESS_MESSAGE, GET_DATA_FAIL_FILE_MESSAGE
+from tgbot.messages.messages import GET_DAILY_FAIL_MESSAGE
 from tgbot.models.users import User
 from tgbot.models.events import Event
 from tgbot.models.users import Base as Userbase
@@ -14,6 +14,14 @@ from config import dp
 from settings import DB_URL
 
 
+GET_DAILY_MAPPER = {
+    '0': 'Вы уже получали сегодня гемы',
+    '1': 'Гемы успешно получены',
+    '2': 'Неверный адрес или подпись',
+    '404': 'Ошибка с запросом. Повторите снова или напишите @UrwaLeason'
+}
+
+
 engine = create_engine(DB_URL)
 Session = sessionmaker(bind=engine)
 Userbase.metadata.create_all(engine)
@@ -21,7 +29,7 @@ EventBase.metadata.create_all(engine)
 
 
 @dp.callback_query_handler(
-    lambda query: query.data == 'btn_get_data',
+    lambda query: query.data == 'btn_get_daily',
     chat_type=ChatType.PRIVATE
 )
 async def get_data_callback(query: CallbackQuery):
@@ -32,7 +40,7 @@ async def get_data_callback(query: CallbackQuery):
     session = Session()
     user = session.query(User).filter_by(user_id=user_id).first()
 
-    event_name = 'get data'
+    event_name = 'get daily'
     event = Event(
         user_id=user_id,
         event_name=event_name
@@ -42,16 +50,12 @@ async def get_data_callback(query: CallbackQuery):
     session.commit()
 
     if not user.address or not user.signature:
-        await query.message.answer(GET_DATA_FAIL_MESSAGE)
+        await query.message.answer(GET_DAILY_FAIL_MESSAGE)
     else:
-        form_doc_message = await query.message.answer(GET_DATA_SUCCESS_MESSAGE)
         soquest = SoQuest(user_id=user_id, address=user.address, signature=user.signature)
-        filename = await soquest.parse_data()
-
-        if filename:
-            await form_doc_message.delete()
-            with open(filename, "rb") as f:
-                document = InputFile(f)
-                await query.message.answer_document(document, caption="Ваш готовый файл")
-        else:
-            await query.message.answer(GET_DATA_FAIL_FILE_MESSAGE)
+        req_answer = await soquest.collect_daily()
+        try:
+            req_mapper = GET_DAILY_MAPPER[req_answer]
+        except:
+            req_mapper = 'Произошла непредвиденная ошибка. Ответ на ваш запрос: ' + req_answer
+        await query.message.answer(req_mapper)

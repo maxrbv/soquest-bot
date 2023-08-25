@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import json
 import math
 import os
 from io import BytesIO
@@ -13,6 +14,7 @@ from settings import BASE_DIR
 from utils import create_dir
 
 API_URL = 'https://api.sograph.xyz/api/campaign/list'
+DAILY_GEMS_URL = 'https://api.sograph.xyz/api/user/check/in'
 PAGE_SIZE = 12
 
 
@@ -39,6 +41,24 @@ class SoQuest:
             self.__process_data()
             filename = await self.__dump_xlsx()
         return filename
+
+    async def collect_daily(self) -> str:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(DAILY_GEMS_URL, headers=self.headers) as response:
+                if response.status == 200:
+                    data_string = await response.text()
+                    data_json = json.loads(data_string)
+                    message = data_json.get('message')
+                    if message == 'Signed in today':
+                        return '0'
+                    if message == 'OK':
+                        return '1'
+                    if message == 'Please login':
+                        return '2'
+                    else:
+                        return message
+                else:
+                    return '404'
 
     async def __get_campaigns_count(self) -> int:
         params = {
